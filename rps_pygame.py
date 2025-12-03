@@ -1,14 +1,14 @@
 import sys
-import random
 import pygame
 import wave
 import struct
 import math
 import os
+import json
 from rps_logic import get_computer_move, winner_decider
 
 # Retro / arcade themed Rock-Paper-Scissors using pygame
-WIDTH, HEIGHT = 800, 480
+WIDTH, HEIGHT = 1100, 720
 BG_COLOR = (18, 18, 30)
 PANEL_COLOR = (26, 26, 40)
 ACCENT = (255, 168, 0)
@@ -65,23 +65,44 @@ def draw_wrapped_center(surf, text, font, start_y, max_width, color=TEXT_COLOR, 
 
 
 def build_summary_msgs(player_name, player_score, computer_score):
-    if player_score == computer_score == 0:
-        return [("Just try the game once and I am sure you will love it!!", (255, 80, 80))]
-    if player_score > computer_score:
-        return [
-            (f'You, {player_name}, scored {player_score} and the computer scored {computer_score}', (230, 230, 230)),
-            ('YOU BEAT THE ALMIGHTY COMPUTER!!!', (255, 200, 50)),
-            ('Thank you for playing the game, see you soon!!', (200, 200, 200)),
-        ]
-    if player_score < computer_score:
-        return [
-            (f'You, {player_name}, scored {player_score} and the computer scored {computer_score}', (230, 230, 230)),
-            ('A MERE COMPUTER BEAT YOU, HUMAN INTELLIGENCE IS ON THE NOSE DIVE. TRY AGAIN AND PROVE ME WRONG', (255, 80, 80)),
-        ]
-    return [
-        (f'You, {player_name}, scored {player_score} and the computer scored {computer_score}', (230, 230, 230)),
-        ('YOU DREW WITH THE COMPUTER, TRY AGAIN AND BEAT IT ONCE FOR ALL', (80, 160, 255)),
-    ]
+    return []
+
+
+def load_scores(path):
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return {}
+        cleaned = {}
+        for name, vals in data.items():
+            if isinstance(vals, dict):
+                cleaned[name] = {
+                    'player': int(vals.get('player', 0)),
+                    'computer': int(vals.get('computer', 0)),
+                    'ties': int(vals.get('ties', 0)),
+                    'games': int(vals.get('games', 0)),
+                    'win_streak': int(vals.get('win_streak', 0)),
+                    'best_streak': int(vals.get('best_streak', 0)),
+                    'matches': int(vals.get('matches', 0)),
+                    'matches_won': int(vals.get('matches_won', 0)),
+                    'matches_lost': int(vals.get('matches_lost', 0)),
+                }
+        return cleaned
+    except Exception:
+        return {}
+
+
+def save_scores(path, data):
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
+    except Exception:
+        pass
+
+
+def default_record():
+    return {'player': 0, 'computer': 0, 'ties': 0, 'games': 0, 'win_streak': 0, 'best_streak': 0, 'matches': 0, 'matches_won': 0, 'matches_lost': 0}
 
 
 def main():
@@ -97,22 +118,57 @@ def main():
     clock = pygame.time.Clock()
     large = pygame.font.SysFont('couriernew', 48, bold=True)
     mid = pygame.font.SysFont('couriernew', 28)
+    mid_bold = pygame.font.SysFont('couriernew', 28, bold=True)
     small = pygame.font.SysFont('couriernew', 20)
 
+    theme_mode = 'neon'
+
+    themes = {
+        'dark': {
+            'bg': (18, 18, 30),
+            'panel': (26, 26, 40),
+            'accent': (255, 168, 0),
+            'text': (230, 230, 230),
+            'btns': [(200, 60, 60), (60, 180, 120), (60, 140, 200)],
+        },
+        'neon': {
+            'bg': (10, 12, 24),
+            'panel': (18, 20, 36),
+            'accent': (0, 220, 180),
+            'text': (240, 240, 255),
+            'btns': [(240, 80, 80), (90, 200, 140), (80, 160, 240)],
+        },
+    }
+    def current_theme():
+        return themes.get(theme_mode, themes['dark'])
+
+    bg_color = current_theme()['bg']
+    panel_color = current_theme()['panel']
+    accent_color = current_theme()['accent']
+    text_color = current_theme()['text']
+
     # Buttons
-    btn_w = 200
+    btn_w = 240
     btn_h = 70
-    gap = 30
+    gap = 36
     left = (WIDTH - (btn_w * 3 + gap * 2)) // 2
 
-    buttons = [
-        Button((left, HEIGHT - 120, btn_w, btn_h), 'ROCK', (200, 60, 60), 'rock'),
-        Button((left + (btn_w + gap), HEIGHT - 120, btn_w, btn_h), 'PAPER', (60, 180, 120), 'paper'),
-        Button((left + 2 * (btn_w + gap), HEIGHT - 120, btn_w, btn_h), 'SCISSORS', (60, 140, 200), 'scissors'),
-    ]
+    def build_buttons():
+        colors = current_theme()['btns']
+        return [
+            Button((left, HEIGHT - 140, btn_w, btn_h), 'ROCK', colors[0], 'rock'),
+            Button((left + (btn_w + gap), HEIGHT - 140, btn_w, btn_h), 'PAPER', colors[1], 'paper'),
+            Button((left + 2 * (btn_w + gap), HEIGHT - 140, btn_w, btn_h), 'SCISSORS', colors[2], 'scissors'),
+        ]
+
+    buttons = build_buttons()
 
     player_score = 0
     computer_score = 0
+    current_ties = 0
+    current_games = 0
+    win_streak = 0
+    best_streak = 0
     round_result = ''
     show_move = None
     countdown = 0
@@ -120,8 +176,24 @@ def main():
     pending_player = None
     state = 'enter_name'
     player_name = ''
+    confirm_user_name = None
+    is_new_user = False
     music_loaded = False
     music_playing = False
+    sfx_enabled = True  # always on
+    music_enabled = True
+    best_of_goal = 3
+    difficulty_modes = ['random']
+    difficulty_idx = 0
+    last_player_move = None
+    option_rects = []
+    matches_played = 0
+    matches_won = 0
+    matches_lost = 0
+    match_in_progress = False
+    match_winner_announced = False
+    last_match_winner = ''
+    quit_rank_note = ''
 
     # prepare simple sound effects (generate small WAV files)
     def make_sine_wav(path, freq=440.0, duration=0.5, volume=0.5):
@@ -158,6 +230,8 @@ def main():
                 wf.writeframesraw(data)
 
     asset_dir = os.path.dirname(__file__)
+    scores_path = os.path.join(asset_dir, 'scores.json')
+    scores = load_scores(scores_path)
     dramatic_path = os.path.join(asset_dir, 'sfx_dramatic.wav')
     click_path = os.path.join(asset_dir, 'sfx_click.wav')
     win_path = os.path.join(asset_dir, 'sfx_win.wav')
@@ -213,7 +287,7 @@ def main():
 
     def start_music():
         nonlocal music_playing
-        if music_loaded and not music_playing and pygame.mixer.get_init():
+        if music_enabled and music_loaded and not music_playing and pygame.mixer.get_init():
             try:
                 pygame.mixer.music.play(-1)
                 music_playing = True
@@ -228,15 +302,42 @@ def main():
             finally:
                 music_playing = False
 
+    def choose_computer_move():
+        return get_computer_move()
+
+    def persist_scores():
+        if player_name:
+            rec = scores.get(player_name, default_record())
+            rec['player'] = player_score
+            rec['computer'] = computer_score
+            rec['ties'] = current_ties
+            rec['games'] = current_games
+            rec['win_streak'] = win_streak
+            rec['best_streak'] = best_streak
+            rec['matches'] = matches_played
+            rec['matches_won'] = matches_won
+            rec['matches_lost'] = matches_lost
+            scores[player_name] = rec
+            save_scores(scores_path, scores)
+
     running = True
     while running:
         dt = clock.tick(60) / 1000.0
+        panel_w_pre = min(760, WIDTH - 100)
+        panel_h_pre = 300
+        panel_x_pre = (WIDTH - panel_w_pre) // 2
+        panel_y_pre = (HEIGHT - panel_h_pre) // 2
+        option_rects = [
+            pygame.Rect(panel_x_pre + 60, panel_y_pre + panel_h_pre - 110, 180, 64),
+            pygame.Rect(panel_x_pre + 60 + 190, panel_y_pre + panel_h_pre - 110, 180, 64),
+            pygame.Rect(panel_x_pre + 60 + 190*2, panel_y_pre + panel_h_pre - 110, 180, 64),
+        ]
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 # trigger quit confirm
                 if state == 'playing':
                     state = 'confirm_quit'
-                    if sfx_dramatic:
+                    if sfx_dramatic and sfx_enabled:
                         sfx_dramatic.play()
                 else:
                     stop_music()
@@ -246,21 +347,95 @@ def main():
                 if state == 'enter_name':
                     # ignore clicks while entering name
                     pass
+                elif state == 'tutorial':
+                    if confirm_rect.collidepoint(pos) or cancel_rect.collidepoint(pos):
+                        state = 'best_of_choice'
+                elif state == 'best_of_choice':
+                    for idx, rect in enumerate(option_rects):
+                        if rect.collidepoint(pos):
+                            best_of_goal = [3,5,10][idx]
+                            state = 'playing'
+                            start_music()
+                            break
+                elif state == 'post_match_choice':
+                    for idx, rect in enumerate(option_rects):
+                        if rect.collidepoint(pos):
+                            best_of_goal = [3,5,10][idx]
+                            state = 'playing'
+                            start_music()
+                            break
+                elif state == 'confirm_identity':
+                    if confirm_rect.collidepoint(pos):
+                        rec = scores.get(confirm_user_name, default_record())
+                        player_score = int(rec.get('player', 0))
+                        computer_score = int(rec.get('computer', 0))
+                        current_ties = int(rec.get('ties', 0))
+                        current_games = int(rec.get('games', 0))
+                        win_streak = int(rec.get('win_streak', 0))
+                        best_streak = int(rec.get('best_streak', 0))
+                        matches_played = int(rec.get('matches', 0))
+                        matches_won = int(rec.get('matches_won', 0))
+                        matches_lost = int(rec.get('matches_lost', 0))
+                        player_name = confirm_user_name or player_name
+                        confirm_user_name = None
+                        is_new_user = False
+                        persist_scores()
+                        state = 'best_of_choice'
+                    elif cancel_rect.collidepoint(pos):
+                        # try another name
+                        player_name = ''
+                        confirm_user_name = None
+                        state = 'enter_name'
                 elif state == 'confirm_quit':
                     # check confirm buttons (confirm_rect/cancel_rect defined in draw)
                     if confirm_rect.collidepoint(pos):
-                        if sfx_click:
+                        if sfx_click and sfx_enabled:
                             sfx_click.play()
+                        # build rank note
+                        leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)
+                        rank = None
+                        if player_name and player_name in scores:
+                            for idx, (name, _) in enumerate(leaderboard):
+                                if name == player_name:
+                                    rank = idx
+                                    break
+                        if rank == 0:
+                            quit_rank_note = 'You are #1. Play to maintain the top spot.'
+                        elif rank is not None:
+                            quit_rank_note = f'You are #{rank+1} on the leaderboard. Play more to reach the top.'
+                        else:
+                            quit_rank_note = 'Play more rounds to climb the leaderboard.'
+                        if match_in_progress:
+                            quit_rank_note = 'Match not recorded. ' + quit_rank_note
+                        state = 'quit_stats'
+                    elif cancel_rect.collidepoint(pos):
+                        if sfx_click and sfx_enabled:
+                            sfx_click.play()
+                        state = 'playing'
+                elif state == 'quit_stats':
+                    if confirm_rect.collidepoint(pos):
+                        if sfx_click and sfx_enabled:
+                            sfx_click.play()
+                        # If quitting mid-match, clear in-progress round scores
+                        if match_in_progress:
+                            player_score = 0
+                            computer_score = 0
+                            current_ties = 0
+                            current_games = 0
+                            match_in_progress = False
+                            show_move = None
+                            round_result = ''
+                            persist_scores()
                         stop_music()
                         running = False
                     elif cancel_rect.collidepoint(pos):
-                        if sfx_click:
+                        if sfx_click and sfx_enabled:
                             sfx_click.play()
                         state = 'playing'
                 elif state == 'playing':
                     for b in buttons:
                         if b.is_clicked(pos) and countdown <= 0:
-                            if sfx_click:
+                            if sfx_click and sfx_enabled:
                                 sfx_click.play()
                             # start countdown animation
                             player_move = b.key
@@ -268,121 +443,419 @@ def main():
                             countdown = 1.8  # seconds for 3-2-1
                             anim_timer = 0
                             pending_player = player_move
+                            last_player_move = player_move
             elif event.type == pygame.KEYDOWN:
                 if state == 'enter_name':
                     if event.key == pygame.K_BACKSPACE:
                         player_name = player_name[:-1]
                     elif event.key == pygame.K_RETURN:
-                        if player_name.strip() == '':
-                            player_name = 'PLAYER'
-                        state = 'playing'
-                        start_music()
+                        chosen = player_name.strip() or 'PLAYER'
+                        if chosen in scores:
+                            confirm_user_name = chosen
+                            state = 'confirm_identity'
+                        else:
+                            player_name = chosen
+                            player_score = 0
+                            computer_score = 0
+                            current_ties = 0
+                            current_games = 0
+                            win_streak = 0
+                            best_streak = 0
+                            is_new_user = True
+                            persist_scores()
+                            state = 'tutorial'
                     else:
                         if len(player_name) < 20 and event.unicode.isprintable():
                             player_name += event.unicode
                 else:
                     if event.key == pygame.K_ESCAPE:
-                        if state == 'playing':
+                        if state in ('best_of_choice', 'post_match_choice'):
+                            state = 'playing'
+                            start_music()
+                        elif state == 'playing':
                             state = 'confirm_quit'
-                            if sfx_dramatic:
+                            if sfx_dramatic and sfx_enabled:
                                 sfx_dramatic.play()
                         elif state == 'confirm_quit':
+                            stop_music()
+                            running = False
+                        elif state == 'quit_stats':
                             state = 'playing'
+                        elif state == 'confirm_quit':
+                            stop_music()
+                            running = False
                         else:
                             stop_music()
                             running = False
+                    elif state == 'tutorial':
+                        if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                            state = 'best_of_choice'
+                    elif state == 'best_of_choice':
+                        if event.key in (pygame.K_3, pygame.K_5, pygame.K_0, pygame.K_KP3, pygame.K_KP5, pygame.K_KP0):
+                            key_to_goal = {pygame.K_3:3, pygame.K_KP3:3, pygame.K_5:5, pygame.K_KP5:5, pygame.K_0:10, pygame.K_KP0:10}
+                            best_of_goal = key_to_goal.get(event.key, best_of_goal)
+                            state = 'playing'
+                            start_music()
+                    elif state == 'post_match_choice':
+                        if event.key in (pygame.K_3, pygame.K_5, pygame.K_0, pygame.K_KP3, pygame.K_KP5, pygame.K_KP0):
+                            key_to_goal = {pygame.K_3:3, pygame.K_KP3:3, pygame.K_5:5, pygame.K_KP5:5, pygame.K_0:10, pygame.K_KP0:10}
+                            best_of_goal = key_to_goal.get(event.key, best_of_goal)
+                            state = 'playing'
+                        elif event.key == pygame.K_q:
+                            stop_music()
+                            running = False
+                    elif state == 'playing' and countdown <= 0:
+                        if event.key in (pygame.K_r, pygame.K_p, pygame.K_s):
+                            move_key = {pygame.K_r: 'rock', pygame.K_p: 'paper', pygame.K_s: 'scissors'}[event.key]
+                            if sfx_click and sfx_enabled:
+                                sfx_click.play()
+                            show_move = None
+                            countdown = 1.8
+                            anim_timer = 0
+                            pending_player = move_key
+                            last_player_move = move_key
+                        elif event.key == pygame.K_m:
+                            music_enabled = not music_enabled
+                            if music_enabled:
+                                start_music()
+                            else:
+                                stop_music()
+                    elif state == 'post_match_choice':
+                        if event.key in (pygame.K_3, pygame.K_5, pygame.K_0, pygame.K_KP3, pygame.K_KP5, pygame.K_KP0):
+                            key_to_goal = {pygame.K_3:3, pygame.K_KP3:3, pygame.K_5:5, pygame.K_KP5:5, pygame.K_0:10, pygame.K_KP0:10}
+                            best_of_goal = key_to_goal.get(event.key, best_of_goal)
+                            state = 'playing'
 
         if countdown > 0:
             countdown -= dt
             anim_timer += dt
             # when countdown finishes, decide
             if countdown <= 0 and pending_player:
-                computer_move = get_computer_move()
+                computer_move = choose_computer_move()
                 result = winner_decider(pending_player, computer_move)
                 if result == 'player':
                     player_score += 1
+                    win_streak += 1
+                    best_streak = max(best_streak, win_streak)
                     round_result = 'YOU WIN!'
-                    if sfx_win:
+                    if sfx_win and sfx_enabled:
                         sfx_win.play()
                 elif result == 'computer':
                     computer_score += 1
+                    win_streak = 0
                     round_result = 'COMPUTER WINS'
                 else:
+                    win_streak = 0
+                    current_ties += 1
                     round_result = "IT'S A TIE"
+                current_games += 1
+                match_in_progress = True
                 show_move = (pending_player, computer_move)
+                if player_score >= best_of_goal or computer_score >= best_of_goal:
+                    match_in_progress = False
+                    match_winner_announced = True
+                    matches_played += 1
+                    if player_score > computer_score:
+                        matches_won += 1
+                        round_result = f'MATCH WINNER! Race to {best_of_goal}'
+                        last_match_winner = 'You won the match!'
+                        win_streak = win_streak if player_score > computer_score else 0
+                    else:
+                        matches_lost += 1
+                        round_result = f'COMPUTER TAKES THE MATCH ({best_of_goal})'
+                        last_match_winner = 'Computer won the match.'
+                        win_streak = 0
+                    # reset round scores for next match
+                    player_score = 0
+                    computer_score = 0
+                    current_ties = 0
+                    current_games = 0
+                    show_move = None
+                    state = 'post_match_choice'
+                persist_scores()
 
         # draw
-        screen.fill(BG_COLOR)
-        # header panel
-        pygame.draw.rect(screen, PANEL_COLOR, (20, 20, WIDTH - 40, 110), border_radius=10)
-        draw_text_center(screen, 'Rock - Paper - Scissors', large, 55, ACCENT)
-        if state == 'enter_name':
-            draw_text_center(screen, 'Enter your name and press Enter', small, 90)
-        else:
-            draw_text_center(screen, 'Retro Duel - Click a choice below', small, 90)
+        # refresh theme colors (for dynamic toggle)
+        bg_color = current_theme()['bg']
+        panel_color = current_theme()['panel']
+        accent_color = current_theme()['accent']
+        text_color = current_theme()['text']
 
-        # Score panel
-        pygame.draw.rect(screen, PANEL_COLOR, (20, 150, WIDTH - 40, 110), border_radius=10)
-        draw_text_center(screen, f'Player: {player_score}   -   Computer: {computer_score}', mid, 200)
-        if countdown > 0:
-            # show animated 3-2-1
-            # compute which number to show
-            secs = max(0, countdown)
-            if secs > 1.2:
-                num = '3'
-            elif secs > 0.6:
-                num = '2'
+        screen.fill(bg_color)
+        # header panel
+        pygame.draw.rect(screen, panel_color, (20, 20, WIDTH - 40, 170), border_radius=10)
+        draw_text_center(screen, 'Rock - Paper - Scissors', large, 100, accent_color)
+        draw_text_center(screen, 'ROYAL RUMBLE', mid_bold, 140, (220, 70, 70))
+        if state == 'enter_name':
+            draw_text_center(screen, 'Enter your name and press Enter', small, HEIGHT // 2 - 40, text_color)
+
+        # Stats and score panels (hide until onboarding is done)
+        if state not in ('enter_name','tutorial','best_of_choice'):
+            stats_rect = pygame.Rect(20, 200, WIDTH - 40, 110)
+            pygame.draw.rect(screen, panel_color, stats_rect, border_radius=10)
+            stats_padding = 24
+            win_rate = (matches_won / matches_played * 100) if matches_played else 0
+            stats_lines = [
+                f'Matches: {matches_played}    Win%: {win_rate:.0f}%',
+                f'Streak: {win_streak} (Best {best_streak})    Race to {best_of_goal}',
+            ]
+            for i, line in enumerate(stats_lines):
+                txt = small.render(line, True, text_color)
+                screen.blit(txt, (stats_rect.left + stats_padding, stats_rect.top + 16 + i * 22))
+
+            leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)[:3]
+            lb_title = small.render('Leaderboard (streaks)', True, accent_color)
+            lb_x = stats_rect.right - stats_padding - lb_title.get_width()
+            lb_y = stats_rect.top + 12
+            screen.blit(lb_title, (lb_x, lb_y))
+            for idx, (name, rec) in enumerate(leaderboard):
+                line = f"{idx+1}. {name}: {rec.get('best_streak',0)}"
+                txt = small.render(line, True, text_color)
+                screen.blit(txt, (lb_x, lb_y + 18 + idx * 18))
+
+            pygame.draw.rect(screen, panel_color, (20, 330, WIDTH - 40, 170), border_radius=10)
+            draw_text_center(screen, f'Player: {player_score}   -   Computer: {computer_score}', mid, 370, text_color)
+            if countdown > 0:
+                # show animated 3-2-1
+                # compute which number to show
+                secs = max(0, countdown)
+                if secs > 1.2:
+                    num = '3'
+                elif secs > 0.6:
+                    num = '2'
+                else:
+                    num = '1'
+                draw_text_center(screen, num, large, 430, accent_color)
+            elif show_move:
+                # display moves
+                p, c = show_move
+                draw_text_center(screen, f'You: {p.upper()}   -   Computer: {c.upper()}', mid, 410, text_color)
+                # animate result glow
+                glow = 40 + int(40 * abs(math.sin(anim_timer * 4)))
+                glow_color = (min(255, accent_color[0] + glow//2), min(255, accent_color[1] + glow//3), min(255, accent_color[2] + glow//4))
+                draw_text_center(screen, round_result, large, 450, glow_color)
             else:
-                num = '1'
-            draw_text_center(screen, num, large, 260, ACCENT)
-        elif show_move:
-            # display moves
-            p, c = show_move
-            draw_text_center(screen, f'You: {p.upper()}   -   Computer: {c.upper()}', mid, 260, TEXT_COLOR)
-            draw_text_center(screen, round_result, large, 305, ACCENT)
-        else:
-            draw_text_center(screen, 'Choose your weapon to begin', mid, 260)
+                draw_text_center(screen, 'Choose your weapon to begin', mid, 430, text_color)
 
         # If we're on the enter_name screen show input box with blinking cursor
         if state == 'enter_name':
-            pygame.draw.rect(screen, PANEL_COLOR, (WIDTH//2 - 260, 300, 520, 60), border_radius=8)
+            box_w, box_h = 520, 60
+            box_rect = pygame.Rect(WIDTH//2 - box_w//2, HEIGHT//2 + 10, box_w, box_h)
+            pygame.draw.rect(screen, panel_color, box_rect, border_radius=8)
             blink_on = (pygame.time.get_ticks() // 400) % 2 == 0
-            display_name = player_name or 'PLAYER'
+            display_name = player_name
             if blink_on:
                 display_name += '|'
-            name_txt = mid.render(display_name, True, TEXT_COLOR)
-            screen.blit(name_txt, (WIDTH//2 - name_txt.get_width()//2, 315))
+            name_txt = mid.render(display_name, True, text_color)
+            screen.blit(name_txt, (WIDTH//2 - name_txt.get_width()//2, box_rect.y + (box_h - name_txt.get_height())//2))
 
         # draw buttons (only in playing state)
         if state == 'playing':
             for b in buttons:
                 b.draw(screen, mid)
 
-        # confirm quit overlay with embedded summary
+        # overlays
         confirm_rect = pygame.Rect(0,0,0,0)
         cancel_rect = pygame.Rect(0,0,0,0)
-        if state == 'confirm_quit':
+        if state == 'tutorial':
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             overlay.fill((0,0,0,200))
             screen.blit(overlay, (0,0))
-            panel_w = min(680, WIDTH - 80)
+            panel_w = min(700, WIDTH - 80)
+            panel_h = 420
+            panel_x = (WIDTH - panel_w) // 2
+            panel_y = (HEIGHT - panel_h) // 2
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+            pygame.draw.rect(screen, panel_color, panel_rect, border_radius=12)
+
+            wrap_width = panel_w - 60
+            y = panel_rect.top + 30
+            y = draw_wrapped_center(screen, 'Welcome to Rock-Paper-Scissors', mid_bold, y, wrap_width, accent_color, line_gap=6) + 8
+            tutorial_lines = [
+                'Play with keys R / P / S or click the icons.',
+                'Match length: best of 3, 5, or 10 (choose next).',
+                'Music: press M to toggle on/off.',
+                'Stats: win%, streaks, and leaderboard show top streaks (top 3).',
+            ]
+            for line in tutorial_lines:
+                y = draw_wrapped_center(screen, line, small, y, wrap_width, text_color, line_gap=4) + 4
+            y += 10
+            y = draw_wrapped_center(screen, 'Skip tutorial or continue to match setup.', small, y, wrap_width, text_color, line_gap=4) + 16
+
+            btn_w = (panel_w - 3 * 30) // 2
+            btn_h = 54
+            btn_y = panel_rect.bottom - btn_h - 24
+            confirm_rect = pygame.Rect(panel_rect.left + 30, btn_y, btn_w, btn_h)
+            cancel_rect = pygame.Rect(panel_rect.right - btn_w - 30, btn_y, btn_w, btn_h)
+            pygame.draw.rect(screen, (80,180,90), confirm_rect, border_radius=8)
+            pygame.draw.rect(screen, (180,60,60), cancel_rect, border_radius=8)
+            confirm_txt = mid.render('Continue', True, (0,0,0))
+            cancel_txt = mid.render('Skip', True, (0,0,0))
+            screen.blit(confirm_txt, confirm_txt.get_rect(center=confirm_rect.center))
+            screen.blit(cancel_txt, cancel_txt.get_rect(center=cancel_rect.center))
+
+        elif state == 'best_of_choice':
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0,0,0,200))
+            screen.blit(overlay, (0,0))
+            panel_w = panel_w_pre
+            panel_h = panel_h_pre
+            panel_x = panel_x_pre
+            panel_y = panel_y_pre
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+            pygame.draw.rect(screen, panel_color, panel_rect, border_radius=12)
+
+            wrap_width = panel_w - 60
+            y = panel_rect.top + 34
+            y = draw_wrapped_center(screen, 'Choose match length (best of)', mid_bold, y, wrap_width, accent_color, line_gap=6) + 14
+            labels = ['Best of 3', 'Best of 5', 'Best of 10']
+            for rect, label in zip(option_rects, labels):
+                pygame.draw.rect(screen, accent_color, rect, border_radius=10)
+                lbl = mid.render(label, True, (0,0,0))
+                screen.blit(lbl, lbl.get_rect(center=rect.center))
+
+        elif state == 'confirm_identity':
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0,0,0,200))
+            screen.blit(overlay, (0,0))
+            panel_w = min(620, WIDTH - 80)
+            panel_h = 240
+            panel_x = (WIDTH - panel_w) // 2
+            panel_y = (HEIGHT - panel_h) // 2
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+            pygame.draw.rect(screen, panel_color, panel_rect, border_radius=12)
+
+            wrap_width = panel_w - 60
+            y = panel_rect.top + 32
+            y = draw_wrapped_center(screen, 'Username already exists', mid_bold, y, wrap_width, accent_color, line_gap=6) + 10
+            existing_label = confirm_user_name or 'this user'
+            y = draw_wrapped_center(screen, f'Are you "{existing_label}"?', mid, y, wrap_width, text_color, line_gap=4) + 18
+
+            btn_w = (panel_w - 3 * 30) // 2
+            btn_h = 54
+            btn_y = panel_rect.bottom - btn_h - 24
+            confirm_rect = pygame.Rect(panel_rect.left + 30, btn_y, btn_w, btn_h)
+            cancel_rect = pygame.Rect(panel_rect.right - btn_w - 30, btn_y, btn_w, btn_h)
+            pygame.draw.rect(screen, (80,180,90), confirm_rect, border_radius=8)
+            pygame.draw.rect(screen, (180,60,60), cancel_rect, border_radius=8)
+            confirm_txt = mid.render('Yes, that is me', True, (0,0,0))
+            cancel_txt = mid.render('Try another', True, (0,0,0))
+            screen.blit(confirm_txt, confirm_txt.get_rect(center=confirm_rect.center))
+            screen.blit(cancel_txt, cancel_txt.get_rect(center=cancel_rect.center))
+
+        elif state == 'post_match_choice':
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0,0,0,200))
+            screen.blit(overlay, (0,0))
+            panel_w = min(760, WIDTH - 80)
             panel_h = 300
             panel_x = (WIDTH - panel_w) // 2
             panel_y = (HEIGHT - panel_h) // 2
             panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
-            pygame.draw.rect(screen, PANEL_COLOR, panel_rect, border_radius=12)
+            pygame.draw.rect(screen, panel_color, panel_rect, border_radius=12)
+
+            wrap_width = panel_w - 60
+            y = panel_rect.top + 32
+            y = draw_wrapped_center(screen, last_match_winner, mid_bold, y, wrap_width, accent_color, line_gap=6) + 10
+            y = draw_wrapped_center(screen, 'Play another match?', mid, y, wrap_width, text_color, line_gap=4) + 16
+
+            labels = ['Best of 3', 'Best of 5', 'Best of 10']
+            total_btn_w = 160 * 3 + 40 * 2
+            start_x = panel_rect.centerx - total_btn_w // 2
+            option_rects = [
+                pygame.Rect(start_x, panel_rect.bottom - 120, 160, 60),
+                pygame.Rect(start_x + 200, panel_rect.bottom - 120, 160, 60),
+                pygame.Rect(start_x + 400, panel_rect.bottom - 120, 160, 60),
+            ]
+            for rect, label in zip(option_rects, labels):
+                pygame.draw.rect(screen, accent_color, rect, border_radius=10)
+                lbl = mid.render(label, True, (0,0,0))
+                screen.blit(lbl, lbl.get_rect(center=rect.center))
+
+        elif state == 'confirm_quit':
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0,0,0,200))
+            screen.blit(overlay, (0,0))
+            panel_w = min(680, WIDTH - 80)
+            panel_h = 460
+            panel_x = (WIDTH - panel_w) // 2
+            panel_y = (HEIGHT - panel_h) // 2
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+            pygame.draw.rect(screen, panel_color, panel_rect, border_radius=12)
 
             wrap_width = panel_w - 60
             y = panel_rect.top + 30
-            y = draw_wrapped_center(screen, 'Are you sure you want to quit?', mid, y, wrap_width, ACCENT, line_gap=4) + 6
+            if match_in_progress:
+                y = draw_wrapped_center(screen, 'Match not finished. It will not be recorded if you quit.', mid, y, wrap_width, accent_color, line_gap=6) + 10
+            else:
+                y = draw_wrapped_center(screen, 'Are you sure you want to quit?', mid, y, wrap_width, accent_color, line_gap=6) + 10
+
+            # Motivation based on leaderboard standing for existing users
+            leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)
+            if player_name and player_name in scores:
+                top_streak = leaderboard[0][1].get('best_streak', 0) if leaderboard else 0
+                player_entry = [idx for idx,(name,_) in enumerate(leaderboard) if name == player_name]
+                rank = player_entry[0] if player_entry else None
+                if rank == 0:
+                    msg = 'You are leading the leaderboard—keep the crown!'
+                else:
+                    msg = f'Chase the leaderboard: top streak is {top_streak}. Go beat it!'
+                y = draw_wrapped_center(screen, msg, mid, y, wrap_width, (200, 200, 255), line_gap=6) + 10
+
             summary_msgs = build_summary_msgs(player_name or 'PLAYER', player_score, computer_score)
             for text, col in summary_msgs:
-                y = draw_wrapped_center(screen, text, mid, y, wrap_width, col, line_gap=4) + 4
-            y = draw_wrapped_center(screen, 'Your progress will be summarized. Exit now?', small, y+6, wrap_width, TEXT_COLOR, line_gap=2) + 10
+                y = draw_wrapped_center(screen, text, mid, y, wrap_width, col, line_gap=8) + 6
+            y += 20
+
+            # Stats snapshot
+            if quit_rank_note:
+                y = draw_wrapped_center(screen, quit_rank_note, mid, y, wrap_width, (200, 200, 255), line_gap=6) + 10
+
+            stats_block = [
+                f"Matches: {matches_played} (W {matches_won} / L {matches_lost})",
+                f"Current streak: {win_streak}   Best streak: {best_streak}",
+                f"Best-of target: {best_of_goal}",
+            ]
+            for line in stats_block:
+                y = draw_wrapped_center(screen, line, small, y, wrap_width, text_color, line_gap=4) + 4
+            y += 20
 
             btn_w = (panel_w - 3 * 30) // 2
             btn_h = 54
-            btn_y = panel_rect.bottom - btn_h - 20
+            btn_y = max(y + 20, panel_rect.bottom - btn_h - 20)
+            confirm_rect = pygame.Rect(panel_rect.left + 30, btn_y, btn_w, btn_h)
+            cancel_rect = pygame.Rect(panel_rect.right - btn_w - 30, btn_y, btn_w, btn_h)
+            pygame.draw.rect(screen, (180,60,60), confirm_rect, border_radius=8)
+            pygame.draw.rect(screen, (80,180,90), cancel_rect, border_radius=8)
+            confirm_txt = mid.render('Quit', True, (0,0,0))
+            cancel_txt = mid.render('Cancel', True, (0,0,0))
+            screen.blit(confirm_txt, confirm_txt.get_rect(center=confirm_rect.center))
+            screen.blit(cancel_txt, cancel_txt.get_rect(center=cancel_rect.center))
+
+        elif state == 'quit_stats':
+            overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0,0,0,200))
+            screen.blit(overlay, (0,0))
+            panel_w = min(760, WIDTH - 80)
+            panel_h = 520
+            panel_x = (WIDTH - panel_w) // 2
+            panel_y = (HEIGHT - panel_h) // 2
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_w, panel_h)
+            pygame.draw.rect(screen, panel_color, panel_rect, border_radius=12)
+
+            wrap_width = panel_w - 60
+            y = panel_rect.top + 28
+            y = draw_wrapped_center(screen, 'Leaderboard (top streaks)', mid, y, wrap_width, accent_color, line_gap=6) + 10
+
+            leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)[:10]
+            for idx, (name, rec) in enumerate(leaderboard):
+                line = f"{idx+1}. {name}: {rec.get('best_streak',0)}"
+                y = draw_wrapped_center(screen, line, mid, y, wrap_width, text_color, line_gap=4) + 4
+            y += 14
+
+            btn_w = (panel_w - 3 * 30) // 2
+            btn_h = 54
+            btn_y = max(y + 16, panel_rect.bottom - btn_h - 18)
             confirm_rect = pygame.Rect(panel_rect.left + 30, btn_y, btn_w, btn_h)
             cancel_rect = pygame.Rect(panel_rect.right - btn_w - 30, btn_y, btn_w, btn_h)
             pygame.draw.rect(screen, (180,60,60), confirm_rect, border_radius=8)
@@ -393,7 +866,8 @@ def main():
             screen.blit(cancel_txt, cancel_txt.get_rect(center=cancel_rect.center))
 
         # footer
-        footer = small.render('Press ESC to quit - Built with Pygame', True, (150, 150, 150))
+        footer_text = f"ESC: quit  |  R/P/S: play  |  M: music {'on' if music_enabled else 'off'}  |  3/5/0: best-of"
+        footer = small.render(footer_text, True, (150, 150, 150))
         screen.blit(footer, (20, HEIGHT - 30))
 
         pygame.display.flip()
