@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rock Paper Scissors Royal Rumble</title>
+  <style>
+    :root {
+      --bg: #0d1024;
+      --panel: rgba(20, 24, 48, 0.85);
+      --accent: #00ffd5;
+      --accent-2: #ff9f1c;
+      --text: #e8ecff;
+      --muted: #99a0c2;
+      --glow: 0 0 18px rgba(0, 255, 213, 0.4), 0 0 32px rgba(0, 255, 213, 0.2);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at 20% 20%, rgba(0,255,213,0.12), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(255,159,28,0.16), transparent 32%),
+                  linear-gradient(160deg, #0b0e20 0%, #0f1330 60%, #0d1024 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+    }
+    .wrap {
+      width: min(1100px, 96vw);
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 18px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      padding: 32px;
+      backdrop-filter: blur(4px);
+    }
+    h1 {
+      font-size: clamp(32px, 4vw, 48px);
+      margin: 0 0 10px 0;
+      text-shadow: var(--glow);
+      letter-spacing: 1px;
+    }
+    .tagline {
+      margin: 0 0 20px 0;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      margin: 24px 0;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+    }
+    .card h3 {
+      margin: 6px 0 10px 0;
+      font-size: 18px;
+      color: var(--accent);
+      text-shadow: 0 0 8px rgba(0, 255, 213, 0.4);
+    }
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.05);
+      margin: 4px 6px 4px 0;
+      color: var(--text);
+      font-size: 12px;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 22px 0;
+    }
+    .btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: linear-gradient(120deg, #00ffd5 0%, #1cc8ff 100%);
+      color: #0a0c18;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 10px 24px rgba(0, 255, 213, 0.35);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(0, 255, 213, 0.45);
+    }
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: none;
+    }
+    code, pre {
+      font-family: "Cascadia Mono", "Fira Code", Consolas, monospace;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 10px;
+      color: var(--text);
+      display: block;
+      white-space: pre-wrap;
+    }
+    .section-title {
+      color: var(--accent-2);
+      font-size: 20px;
+      margin: 18px 0 10px 0;
+    }
+    ul {
+      padding-left: 18px;
+      margin: 6px 0 14px 0;
+    }
+    li { margin: 6px 0; color: var(--text); }
+    @media (max-width: 640px) {
+      .wrap { padding: 24px; }
+      .cta-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Rock Paper Scissors Royal Rumble</h1>
+    <p class="tagline">Neon-lit arcade vibes, chiptune beats, and a smackdown of ROCK / PAPER / SCISSORS.</p>
+
+    <div class="cta-row">
+      <a class="btn" href="https://github.com/" target="_blank" rel="noreferrer">View on GitHub</a>
+      <a class="btn secondary" href="#quickstart">How to play</a>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Highlights</h3>
+        <span class="pill">Pygame UI</span><span class="pill">Chiptune + SFX</span>
+        <span class="pill">Terminal mode</span><span class="pill">Optional leaderboard</span>
+        <span class="pill">Tested logic</span>
+      </div>
+      <div class="card">
+        <h3>Run (Pygame)</h3>
+        <pre>set PYTHONPATH=src
+python -m rps.pygame_app</pre>
+      </div>
+      <div class="card">
+        <h3>Run (CLI)</h3>
+        <pre>set PYTHONPATH=src
+python -m rps.cli</pre>
+      </div>
+    </div>
+
+    <div class="section-title" id="quickstart">Quickstart</div>
+    <pre>python -m pip install -r requirements.txt</pre>
+    <p class="section-title">Controls (Pygame)</p>
+    <ul>
+      <li>Click ROCK, PAPER, or SCISSORS to throw.</li>
+      <li>Press <code>ESC</code> to quit. Music toggles in-game. Audio loads from <code>assets/audio/</code>.</li>
+    </ul>
+
+    <div class="section-title">Project layout</div>
+    <ul>
+      <li><code>src/rps/logic.py</code> – rules and computer move picker</li>
+      <li><code>src/rps/cli.py</code> – terminal loop</li>
+      <li><code>src/rps/pygame_app.py</code> – main Pygame experience (music, SFX, leaderboard hooks)</li>
+      <li><code>src/rps/gui_widgets.py</code> – small Pygame demo UI</li>
+      <li><code>src/rps/shared_scores.py</code> – optional Supabase client</li>
+      <li><code>assets/audio/</code> – music and sound effects</li>
+      <li><code>data/scores.json</code> – local score cache (git-ignored)</li>
+      <li><code>tests/test_logic.py</code> – quick logic checks</li>
+    </ul>
+
+    <div class="section-title">Leaderboard (optional)</div>
+    <ul>
+      <li>Default: scores stay local; cloud sync is off.</li>
+      <li>To share scores, set up your own Supabase and add to <code>.env</code>:
+        <pre>SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key</pre>
+        Use a public/anon key with strict RLS. Do not share a service-role key. Update <code>src/rps/shared_scores.py</code> to read the anon key if you enable this.
+      </li>
+    </ul>
+
+    <div class="section-title">Tests</div>
+    <pre>python -m pytest
+# or
+python tests/test_logic.py</pre>
+  </div>
+</body>
+</html>
