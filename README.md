@@ -1,51 +1,55 @@
 # Rock Paper Scissors Royal Rumble
 
-Retro, arcade-style Rock-Paper-Scissors built in Python with both a CLI and a Pygame experience.
+Retro, arcade-style Rock/Paper/Scissors in Python. Pick your move, hear the chiptune roar, and chase a high score.
 
-## Setup
+## Highlights
+- Fast Pygame arcade UI with music and SFX.
+- Quick terminal mode for barebones duels.
+- Optional online leaderboard (Supabase) with safe anon keys.
+- Tested game logic and tidy, src-based layout.
+
+## Quickstart
+1) Install:
 ```powershell
 python -m pip install -r requirements.txt
 ```
-Optional: create and activate a virtual environment before installing. If you are running directly from the repo, set the source folder on your path first:
-```powershell
-set PYTHONPATH=src
-```
-
-## Run the games
-- Pygame retro UI:
+2) Play (from repo root):
+- Pygame UI:
   ```powershell
+  set PYTHONPATH=src
   python -m rps.pygame_app
   ```
-- Simple terminal game:
+- Terminal game:
   ```powershell
+  set PYTHONPATH=src
   python -m rps.cli
   ```
-- Minimal sample UI helper: `python -m rps.gui_widgets` (used as a demo component).
-
-## Project layout
-- `src/rps/logic.py` — core game rules (determine winner, random CPU move)
-- `src/rps/cli.py` — terminal-based game loop
-- `src/rps/pygame_app.py` — main Pygame experience with sounds and leaderboard hooks
-- `src/rps/gui_widgets.py` — lightweight Pygame UI demo
-- `src/rps/shared_scores.py` — Supabase leaderboard helpers
-- `assets/audio/` — music and sound effects
-- `data/scores.json` — local score cache (ignored by git)
-- `tests/test_logic.py` — quick logic checks
-
-## Leaderboard (optional)
-If you want to sync scores to Supabase, set these in a `.env` at the repo root:
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE=service-role-key
-```
-Without these, the game still runs; leaderboard features quietly no-op.
+- Compatibility: `python rps_pygame.py` also launches the Pygame UI.
 
 ## Controls (Pygame)
-- Click ROCK, PAPER, or SCISSORS to play rounds.
-- Press `ESC` to quit. Music toggles in-game; sounds auto-load from `assets/audio/`.
+- Click ROCK, PAPER, or SCISSORS to throw.
+- `ESC` quits. Music toggles in-game. Audio loads from `assets/audio/`.
+
+## Project layout
+- `src/rps/logic.py` - rules and computer move picker
+- `src/rps/cli.py` - terminal loop
+- `src/rps/pygame_app.py` - main Pygame experience (music, SFX, leaderboard hooks)
+- `src/rps/gui_widgets.py` - small Pygame demo UI
+- `src/rps/shared_scores.py` - optional Supabase client
+- `assets/audio/` - music and sound effects
+- `data/scores.json` - local score cache (git-ignored)
+- `tests/test_logic.py` - quick logic checks
+
+## Leaderboard (optional)
+- Default: scores stay local; cloud sync is off.
+- If you want shared scores, set up your own Supabase project and add to `.env`:
+  ```
+  SUPABASE_URL=https://your-project.supabase.co
+  SUPABASE_ANON_KEY=your-anon-key
+  ```
+  Use only a public/anon key with strict RLS. Do not share a service-role key. Update `src/rps/shared_scores.py` to read the anon key if you enable this.
 
 ## Tests
-Run the quick checks:
 ```powershell
 python -m pytest
 ```
@@ -53,4 +57,3 @@ or
 ```powershell
 python tests/test_logic.py
 ```
-
