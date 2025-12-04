@@ -28,7 +28,7 @@ python -m pip install -r requirements.txt
 
 ## 🎮 Pygame controls
 - Click ROCK, PAPER, or SCISSORS to throw.
-- `ESC` quits. Music toggles in-game. Audio loads from `assets/audio/`.
+- 'ESC' quits. Music toggles in-game. Audio loads from 'assets/audio/'.
 
 ## 🧭 Project layout
 - `src/rps/logic.py` – rules and computer move picker
@@ -50,10 +50,10 @@ python -m pip install -r requirements.txt
   Use only a public/anon key with strict RLS. Do not share a service-role key. Update `src/rps/shared_scores.py` to read the anon key if you enable this.
 
 ## ✅ Tests
-```powershell
+```
 python -m pytest
 ```
 or
-```powershell
+```
 python tests/test_logic.py
 ```
