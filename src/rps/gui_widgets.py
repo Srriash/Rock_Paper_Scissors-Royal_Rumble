@@ -1,7 +1,8 @@
 import sys
 import random
+from pathlib import Path
 import pygame
-from rps_logic import get_computer_move, winner_decider
+from rps.logic import get_computer_move, winner_decider
 
 WIDTH, HEIGHT = 800, 480
 BG_COLOR = (18, 18, 30)
@@ -12,18 +13,20 @@ TEXT_COLOR = (230, 230, 230)
 pygame.init()
 pygame.mixer.init()
 
-# --- LOAD SOUNDS (put the files in a "sounds" folder) ---
+ASSET_DIR = Path(__file__).resolve().parents[2] / "assets" / "audio"
+
+# --- LOAD SOUNDS (now under assets/audio) ---
 try:
-    pygame.mixer.music.load("sounds/bg_music.ogg")
+    pygame.mixer.music.load(str(ASSET_DIR / "bg_battle.wav"))
     pygame.mixer.music.set_volume(0.3)
     pygame.mixer.music.play(-1)  # loop forever
 except pygame.error:
-    pass  # if no music file, just skip
+    pygame.mixer.music.stop()
 
 try:
-    SND_WIN = pygame.mixer.Sound("sounds/win.wav")
-    SND_LOSE = pygame.mixer.Sound("sounds/lose.wav")
-    SND_TIE = pygame.mixer.Sound("sounds/tie.wav")
+    SND_WIN = pygame.mixer.Sound(str(ASSET_DIR / "sfx_win.wav"))
+    SND_LOSE = pygame.mixer.Sound(str(ASSET_DIR / "sfx_dramatic.wav"))
+    SND_TIE = pygame.mixer.Sound(str(ASSET_DIR / "sfx_click.wav"))
 except pygame.error:
     SND_WIN = SND_LOSE = SND_TIE = None
 

@@ -2,7 +2,7 @@
 .env
 
 # Local data
-scores.json
+data/scores.json
 
 # Python junk
 __pycache__/

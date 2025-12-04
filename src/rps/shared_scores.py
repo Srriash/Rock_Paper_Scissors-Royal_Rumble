@@ -1,14 +1,15 @@
 import os
+from pathlib import Path
 import requests
 
 
 def _load_dotenv():
     """Lightweight .env loader so the game works even when env vars aren't pre-set."""
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    if not os.path.exists(env_path):
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    if not env_path.exists():
         return
     try:
-        with open(env_path, "r", encoding="utf-8") as f:
+        with env_path.open("r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:

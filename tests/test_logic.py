@@ -1,4 +1,13 @@
-from rps_logic import get_computer_move, winner_decider
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from rps.logic import get_computer_move, winner_decider
+
 moves = ['rock', 'paper', 'scissors']
 def test_get_computer_move():
     for _ in range(10):
