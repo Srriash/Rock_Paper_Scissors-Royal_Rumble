@@ -6,6 +6,7 @@ import math
 import os
 import json
 from rps_logic import get_computer_move, winner_decider
+from shared_scores import fetch_leaderboard, fetch_player, upsert_score
 
 # Retro / arcade themed Rock-Paper-Scissors using pygame
 WIDTH, HEIGHT = 1100, 720
@@ -69,36 +70,11 @@ def build_summary_msgs(player_name, player_score, computer_score):
 
 
 def load_scores(path):
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        if not isinstance(data, dict):
-            return {}
-        cleaned = {}
-        for name, vals in data.items():
-            if isinstance(vals, dict):
-                cleaned[name] = {
-                    'player': int(vals.get('player', 0)),
-                    'computer': int(vals.get('computer', 0)),
-                    'ties': int(vals.get('ties', 0)),
-                    'games': int(vals.get('games', 0)),
-                    'win_streak': int(vals.get('win_streak', 0)),
-                    'best_streak': int(vals.get('best_streak', 0)),
-                    'matches': int(vals.get('matches', 0)),
-                    'matches_won': int(vals.get('matches_won', 0)),
-                    'matches_lost': int(vals.get('matches_lost', 0)),
-                }
-        return cleaned
-    except Exception:
-        return {}
+    return {}
 
 
 def save_scores(path, data):
-    try:
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f)
-    except Exception:
-        pass
+    return
 
 
 def default_record():
@@ -187,13 +163,13 @@ def main():
     difficulty_idx = 0
     last_player_move = None
     option_rects = []
-    matches_played = 0
     matches_won = 0
     matches_lost = 0
     match_in_progress = False
     match_winner_announced = False
     last_match_winner = ''
     quit_rank_note = ''
+    remote_leaderboard = []
 
     # prepare simple sound effects (generate small WAV files)
     def make_sine_wav(path, freq=440.0, duration=0.5, volume=0.5):
@@ -230,8 +206,6 @@ def main():
                 wf.writeframesraw(data)
 
     asset_dir = os.path.dirname(__file__)
-    scores_path = os.path.join(asset_dir, 'scores.json')
-    scores = load_scores(scores_path)
     dramatic_path = os.path.join(asset_dir, 'sfx_dramatic.wav')
     click_path = os.path.join(asset_dir, 'sfx_click.wav')
     win_path = os.path.join(asset_dir, 'sfx_win.wav')
@@ -306,21 +280,14 @@ def main():
         return get_computer_move()
 
     def persist_scores():
-        if player_name:
-            rec = scores.get(player_name, default_record())
-            rec['player'] = player_score
-            rec['computer'] = computer_score
-            rec['ties'] = current_ties
-            rec['games'] = current_games
-            rec['win_streak'] = win_streak
-            rec['best_streak'] = best_streak
-            rec['matches'] = matches_played
-            rec['matches_won'] = matches_won
-            rec['matches_lost'] = matches_lost
-            scores[player_name] = rec
-            save_scores(scores_path, scores)
+        return
+
+    def refresh_remote_leaderboard():
+        nonlocal remote_leaderboard
+        remote_leaderboard = fetch_leaderboard(10)
 
     running = True
+    refresh_remote_leaderboard()
     while running:
         dt = clock.tick(60) / 1000.0
         panel_w_pre = min(760, WIDTH - 100)
@@ -348,7 +315,7 @@ def main():
                     # ignore clicks while entering name
                     pass
                 elif state == 'tutorial':
-                    if confirm_rect.collidepoint(pos) or cancel_rect.collidepoint(pos):
+                    if confirm_rect.collidepoint(pos):
                         state = 'best_of_choice'
                 elif state == 'best_of_choice':
                     for idx, rect in enumerate(option_rects):
@@ -366,20 +333,18 @@ def main():
                             break
                 elif state == 'confirm_identity':
                     if confirm_rect.collidepoint(pos):
-                        rec = scores.get(confirm_user_name, default_record())
-                        player_score = int(rec.get('player', 0))
-                        computer_score = int(rec.get('computer', 0))
-                        current_ties = int(rec.get('ties', 0))
-                        current_games = int(rec.get('games', 0))
-                        win_streak = int(rec.get('win_streak', 0))
-                        best_streak = int(rec.get('best_streak', 0))
-                        matches_played = int(rec.get('matches', 0))
-                        matches_won = int(rec.get('matches_won', 0))
-                        matches_lost = int(rec.get('matches_lost', 0))
+                        rec = fetch_player(confirm_user_name)
+                        player_score = 0
+                        computer_score = 0
+                        current_ties = 0
+                        current_games = 0
+                        win_streak = 0
+                        best_streak = int(rec.get('best_streak', 0)) if rec else 0
+                        matches_won = int(rec.get('matches_won', 0)) if rec else 0
+                        matches_lost = int(rec.get('matches_lost', 0)) if rec else 0
                         player_name = confirm_user_name or player_name
                         confirm_user_name = None
                         is_new_user = False
-                        persist_scores()
                         state = 'best_of_choice'
                     elif cancel_rect.collidepoint(pos):
                         # try another name
@@ -391,20 +356,21 @@ def main():
                     if confirm_rect.collidepoint(pos):
                         if sfx_click and sfx_enabled:
                             sfx_click.play()
-                        # build rank note
-                        leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)
+                        # build rank note based on remote leaderboard
+                        leaderboard = sorted(remote_leaderboard, key=lambda rec: rec.get('best_streak',0), reverse=True)
                         rank = None
-                        if player_name and player_name in scores:
-                            for idx, (name, _) in enumerate(leaderboard):
-                                if name == player_name:
-                                    rank = idx
+                        if player_name:
+                            for idx_lb, rec in enumerate(leaderboard):
+                                if rec.get('name') == player_name:
+                                    rank = idx_lb
                                     break
                         if rank == 0:
                             quit_rank_note = 'You are #1. Play to maintain the top spot.'
                         elif rank is not None:
                             quit_rank_note = f'You are #{rank+1} on the leaderboard. Play more to reach the top.'
                         else:
-                            quit_rank_note = 'Play more rounds to climb the leaderboard.'
+                            top_streak = leaderboard[0].get('best_streak',0) if leaderboard else 0
+                            quit_rank_note = f'Top streak is {top_streak}. Climb the board!'
                         if match_in_progress:
                             quit_rank_note = 'Match not recorded. ' + quit_rank_note
                         state = 'quit_stats'
@@ -450,7 +416,9 @@ def main():
                         player_name = player_name[:-1]
                     elif event.key == pygame.K_RETURN:
                         chosen = player_name.strip() or 'PLAYER'
-                        if chosen in scores:
+                        # if user exists remotely, confirm identity; else create fresh
+                        existing = fetch_player(chosen)
+                        if existing:
                             confirm_user_name = chosen
                             state = 'confirm_identity'
                         else:
@@ -461,8 +429,10 @@ def main():
                             current_games = 0
                             win_streak = 0
                             best_streak = 0
+                            matches_won = 0
+                            matches_lost = 0
                             is_new_user = True
-                            persist_scores()
+                            refresh_remote_leaderboard()
                             state = 'tutorial'
                     else:
                         if len(player_name) < 20 and event.unicode.isprintable():
@@ -535,17 +505,13 @@ def main():
                 result = winner_decider(pending_player, computer_move)
                 if result == 'player':
                     player_score += 1
-                    win_streak += 1
-                    best_streak = max(best_streak, win_streak)
                     round_result = 'YOU WIN!'
                     if sfx_win and sfx_enabled:
                         sfx_win.play()
                 elif result == 'computer':
                     computer_score += 1
-                    win_streak = 0
                     round_result = 'COMPUTER WINS'
                 else:
-                    win_streak = 0
                     current_ties += 1
                     round_result = "IT'S A TIE"
                 current_games += 1
@@ -554,23 +520,27 @@ def main():
                 if player_score >= best_of_goal or computer_score >= best_of_goal:
                     match_in_progress = False
                     match_winner_announced = True
-                    matches_played += 1
                     if player_score > computer_score:
                         matches_won += 1
                         round_result = f'MATCH WINNER! Race to {best_of_goal}'
                         last_match_winner = 'You won the match!'
-                        win_streak = win_streak if player_score > computer_score else 0
+                        win_streak += 1  # match win streak
+                        best_streak = max(best_streak, win_streak)
                     else:
                         matches_lost += 1
                         round_result = f'COMPUTER TAKES THE MATCH ({best_of_goal})'
                         last_match_winner = 'Computer won the match.'
-                        win_streak = 0
+                        win_streak = 0  # reset match streak on loss
                     # reset round scores for next match
                     player_score = 0
                     computer_score = 0
                     current_ties = 0
                     current_games = 0
                     show_move = None
+                    total_played = matches_won + matches_lost
+                    win_pct = (matches_won / total_played * 100.0) if total_played else 0.0
+                    upsert_score(player_name or 'PLAYER', matches_won, matches_lost, best_streak, win_pct=win_pct)
+                    refresh_remote_leaderboard()
                     state = 'post_match_choice'
                 persist_scores()
 
@@ -594,16 +564,17 @@ def main():
             stats_rect = pygame.Rect(20, 200, WIDTH - 40, 110)
             pygame.draw.rect(screen, panel_color, stats_rect, border_radius=10)
             stats_padding = 24
-            win_rate = (matches_won / matches_played * 100) if matches_played else 0
+            total_played = matches_won + matches_lost
+            win_rate = (matches_won / total_played * 100) if total_played else 0
             stats_lines = [
-                f'Matches: {matches_played}    Win%: {win_rate:.0f}%',
+                f'Matches: {total_played}    Win%: {win_rate:.0f}%',
                 f'Streak: {win_streak} (Best {best_streak})    Race to {best_of_goal}',
             ]
             for i, line in enumerate(stats_lines):
                 txt = small.render(line, True, text_color)
                 screen.blit(txt, (stats_rect.left + stats_padding, stats_rect.top + 16 + i * 22))
 
-            leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)[:3]
+            leaderboard = [(rec.get('name','?'), rec) for rec in remote_leaderboard][:3]
             lb_title = small.render('Leaderboard (streaks)', True, accent_color)
             lb_x = stats_rect.right - stats_padding - lb_title.get_width()
             lb_y = stats_rect.top + 12
@@ -679,20 +650,17 @@ def main():
             ]
             for line in tutorial_lines:
                 y = draw_wrapped_center(screen, line, small, y, wrap_width, text_color, line_gap=4) + 4
-            y += 10
-            y = draw_wrapped_center(screen, 'Skip tutorial or continue to match setup.', small, y, wrap_width, text_color, line_gap=4) + 16
+            y += 20
 
-            btn_w = (panel_w - 3 * 30) // 2
+            btn_w = 200
             btn_h = 54
+            btn_x = panel_rect.centerx - btn_w // 2
             btn_y = panel_rect.bottom - btn_h - 24
-            confirm_rect = pygame.Rect(panel_rect.left + 30, btn_y, btn_w, btn_h)
-            cancel_rect = pygame.Rect(panel_rect.right - btn_w - 30, btn_y, btn_w, btn_h)
+            confirm_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
+            cancel_rect = pygame.Rect(0,0,0,0)
             pygame.draw.rect(screen, (80,180,90), confirm_rect, border_radius=8)
-            pygame.draw.rect(screen, (180,60,60), cancel_rect, border_radius=8)
             confirm_txt = mid.render('Continue', True, (0,0,0))
-            cancel_txt = mid.render('Skip', True, (0,0,0))
             screen.blit(confirm_txt, confirm_txt.get_rect(center=confirm_rect.center))
-            screen.blit(cancel_txt, cancel_txt.get_rect(center=cancel_rect.center))
 
         elif state == 'best_of_choice':
             overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -785,21 +753,21 @@ def main():
 
             wrap_width = panel_w - 60
             y = panel_rect.top + 30
-            if match_in_progress:
-                y = draw_wrapped_center(screen, 'Match not finished. It will not be recorded if you quit.', mid, y, wrap_width, accent_color, line_gap=6) + 10
-            else:
-                y = draw_wrapped_center(screen, 'Are you sure you want to quit?', mid, y, wrap_width, accent_color, line_gap=6) + 10
-
             # Motivation based on leaderboard standing for existing users
-            leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)
-            if player_name and player_name in scores:
-                top_streak = leaderboard[0][1].get('best_streak', 0) if leaderboard else 0
-                player_entry = [idx for idx,(name,_) in enumerate(leaderboard) if name == player_name]
-                rank = player_entry[0] if player_entry else None
+            leaderboard = sorted(remote_leaderboard, key=lambda rec: rec.get('best_streak',0), reverse=True)
+            if player_name:
+                rank = None
+                for idx_lb, rec in enumerate(leaderboard):
+                    if rec.get('name') == player_name:
+                        rank = idx_lb
+                        break
+                top_streak = leaderboard[0].get('best_streak', 0) if leaderboard else 0
                 if rank == 0:
-                    msg = 'You are leading the leaderboard—keep the crown!'
+                    msg = 'You are #1. Keep the crown!'
+                elif rank is not None:
+                    msg = f'You are #{rank+1}. Top streak is {top_streak}. Climb to #1!'
                 else:
-                    msg = f'Chase the leaderboard: top streak is {top_streak}. Go beat it!'
+                    msg = f'Top streak is {top_streak}. Play to get on the board!'
                 y = draw_wrapped_center(screen, msg, mid, y, wrap_width, (200, 200, 255), line_gap=6) + 10
 
             summary_msgs = build_summary_msgs(player_name or 'PLAYER', player_score, computer_score)
@@ -811,8 +779,9 @@ def main():
             if quit_rank_note:
                 y = draw_wrapped_center(screen, quit_rank_note, mid, y, wrap_width, (200, 200, 255), line_gap=6) + 10
 
+            total_played = matches_won + matches_lost
             stats_block = [
-                f"Matches: {matches_played} (W {matches_won} / L {matches_lost})",
+                f"Matches: {total_played} (W {matches_won} / L {matches_lost})",
                 f"Current streak: {win_streak}   Best streak: {best_streak}",
                 f"Best-of target: {best_of_goal}",
             ]
@@ -847,7 +816,7 @@ def main():
             y = panel_rect.top + 28
             y = draw_wrapped_center(screen, 'Leaderboard (top streaks)', mid, y, wrap_width, accent_color, line_gap=6) + 10
 
-            leaderboard = sorted(scores.items(), key=lambda kv: kv[1].get('best_streak',0), reverse=True)[:10]
+            leaderboard = [(rec.get('name','?'), rec) for rec in remote_leaderboard][:10]
             for idx, (name, rec) in enumerate(leaderboard):
                 line = f"{idx+1}. {name}: {rec.get('best_streak',0)}"
                 y = draw_wrapped_center(screen, line, mid, y, wrap_width, text_color, line_gap=4) + 4
@@ -878,4 +847,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-#as
+#ashwin created this @AshAs org
