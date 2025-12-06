@@ -40,7 +40,7 @@ Otherwise, run the same commands without it.
 python -m python rps_pygame.py
 ```
 or
-You can directly from the main file stored in src
+You can directly run it from the main file stored in src
 
 ```
 # macOS / Linux
