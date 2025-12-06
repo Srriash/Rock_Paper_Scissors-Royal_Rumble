@@ -17,6 +17,8 @@ Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, 
 - Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically.
   
 ## Use it
+If you are using UV python, then prefix the commands with uv.
+Otherwise, run the same commands without it.
 1) Install deps:
    ```
    python -m pip install -r requirements.txt
