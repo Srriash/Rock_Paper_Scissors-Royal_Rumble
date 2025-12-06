@@ -89,14 +89,13 @@ python -m rps.cli</pre>
     <div class="section-title">How it works (under the hood)</div>
     <ul>
       <li>Game: Pygame front end for arcade visuals and sound; optional terminal mode for barebones duels.</li>
-      <li>Backend: the client hits <code>BACKEND_API_BASE</code> (Cloudflare Worker). The Worker upserts to Supabase with <code>on_conflict=name</code> so existing users update.</li>
-      <li>Data: Supabase stores wins, losses, best streak; generated columns (<code>win_pct</code>, <code>total_matches</code>) are computed in the DB. Keep <code>name</code> UNIQUE and lowercased; RLS stays enabled if you use an anon key.</li>
+      <li>Backend: the user hits 'BACKEND_API_BASE' (Cloudflare Worker). The Worker upserts to Supabase with 'on_conflict=name' so existing users update.</li>
+      <li>Data: Supabase stores wins, losses, best streak; generated columns ('win_pct', 'total_matches') are computed in the DB. Keep 'name' UNIQUE and lowercased; RLS stays enabled if you use an anon key.</li>
     </ul>
 
     <div class="section-title">Use it</div>
     <ul>
-      <li>Install deps: <code>python -m pip install -r requirements.txt</code></li>
-      <li>Optional override: set <code>BACKEND_API_BASE</code> in <code>.env</code> to your own Worker.</li>
+      <li>Install dependents: <code>python -m pip install -r requirements.txt</code></li>
       <li>Pygame UI (easy): <code>python rps_pygame.py</code> (shim loads the main <code>src/rps/pygame_app.py</code>)</li>
       <li>Module-style: set <code>PYTHONPATH=src</code>, then <code>python -m rps.pygame_app</code></li>
       <li>Terminal duel: set <code>PYTHONPATH=src</code>, then <code>python -m rps.cli</code></li>
@@ -108,7 +107,7 @@ python -m rps.cli</pre>
       <li><code>src/rps/cli.py</code> - terminal loop</li>
       <li><code>src/rps/pygame_app.py</code> - main Pygame experience (music, SFX, leaderboard hooks)</li>
       <li><code>src/rps/gui_widgets.py</code> - small Pygame demo UI</li>
-      <li><code>src/rps/shared_scores.py</code> - client for the Cloudflare Worker backend</li>
+      <li><code>src/rps/shared_scores.py</code> - user for the Cloudflare Worker backend</li>
       <li><code>assets/audio/</code> - music and sound effects</li>
       <li><code>data/scores.json</code> - local score cache (git-ignored)</li>
       <li><code>tests/test_logic.py</code> - quick logic checks</li>
