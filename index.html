@@ -166,31 +166,29 @@ python -m rps.cli</pre>
       <li>Press <code>Esc</code> to quit. Music toggles in-game. Audio loads from <code>assets/audio/</code>.</li>
     </ul>
 
+    <div class="section-title">About</div>
+    <p>Retro deja vu in neon: chiptune soundtrack, chunky buttons, and a persistent leaderboard tied to your username. Come back anytime and your stats are still there.</p>
+
     <div class="section-title">Project layout</div>
     <ul>
-      <li><code>src/rps/logic.py</code> – rules and computer move picker</li>
-      <li><code>src/rps/cli.py</code> – terminal loop</li>
-      <li><code>src/rps/pygame_app.py</code> – main Pygame experience (music, SFX, leaderboard hooks)</li>
-      <li><code>src/rps/gui_widgets.py</code> – small Pygame demo UI</li>
-      <li><code>src/rps/shared_scores.py</code> – optional Supabase client</li>
-      <li><code>assets/audio/</code> – music and sound effects</li>
-      <li><code>data/scores.json</code> – local score cache (git-ignored)</li>
-      <li><code>tests/test_logic.py</code> – quick logic checks</li>
+      <li><code>src/rps/logic.py</code> - rules and computer move picker</li>
+      <li><code>src/rps/cli.py</code> - terminal loop</li>
+      <li><code>src/rps/pygame_app.py</code> - main Pygame experience (music, SFX, leaderboard hooks)</li>
+      <li><code>src/rps/gui_widgets.py</code> - small Pygame demo UI</li>
+      <li><code>src/rps/shared_scores.py</code> - client for the Cloudflare Worker backend</li>
+      <li><code>assets/audio/</code> - music and sound effects</li>
+      <li><code>data/scores.json</code> - local score cache (git-ignored)</li>
+      <li><code>tests/test_logic.py</code> - quick logic checks</li>
     </ul>
 
-    <div class="section-title">Leaderboard (backend proxy)</div>
+    <div class="section-title">Leaderboard</div>
     <ul>
-      <li>Default: scores stay local; cloud sync is off.</li>
-      <li>To share scores without exposing keys, point the game at your Cloudflare Worker proxy:
+      <li>Default: scores stay local.</li>
+      <li>Join everyone on the shared board by pointing the game at your Cloudflare Worker proxy:
         <pre>BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev</pre>
-        The client calls your Worker; the Worker upserts to Supabase with your service-role key. Generated columns (win_pct, total_matches) are computed in the DB.
+        The client calls your Worker; the Worker upserts to Supabase with your service-role key. Generated columns (win_pct, total_matches) are computed in the DB. Your username keeps your stats across sessions.
       </li>
     </ul>
-
-    <div class="section-title">Tests</div>
-    <pre>python -m pytest</pre>
-    or
-<pre>python tests/test_logic.py</pre>
   </div>
 </body>
 </html>
