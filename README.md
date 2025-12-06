@@ -10,29 +10,18 @@ Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, 
 - Chunky buttons: big, bold controls for visual punch.
 - Website: a static page to navigate the module and setup.
 
-## Leaderboard
-- Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically. Usernames must be unique; stats persist across sessions.
-- To run your own board or harden access, point to your Worker in `.env`:
-  ```
-  BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
-  ```
-  The client calls the Worker; the Worker upserts to Supabase. If you switch the Worker to an anon key, enable RLS and add SELECT/INSERT/UPDATE policies with sanity checks (length/name, non-negative stats) so public writes stay constrained.
-
 ## How it works (under the hood)
 - Game: Pygame front end for arcade visuals and sound; optional terminal mode for barebones duels.
 - Backend: the client hits `BACKEND_API_BASE` (Cloudflare Worker). The Worker upserts to Supabase with `on_conflict=name` so existing users update.
 - Data: Supabase stores wins, losses, best streak; generated columns (`win_pct`, `total_matches`) are computed in the DB. Keep `name` UNIQUE and lowercased; RLS stays enabled if you use an anon key.
-
+- Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically.
+  
 ## Use it
 1) Install deps:
 ```powershell
 python -m pip install -r requirements.txt
 ```
-2) Optional: override the default backend in `.env`:
-   ```
-   BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
-   ```
-3) Run (from repo root):
+2) Run (from repo root):
 - Pygame UI:
   ```powershell
   set PYTHONPATH=src
