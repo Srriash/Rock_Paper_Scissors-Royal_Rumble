@@ -173,7 +173,41 @@ python -m rps.cli</pre>
     </ul>
 
     <div class="section-title">About</div>
-    <p>Retro-style Rock/Paper/Scissors with neon deja vu vibes: chiptune soundtrack, chunky buttons, and a persistent leaderboard tied to your username. Create a unique username and your stats stick—every return is a climb, not a reset.</p>
+    <p>Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, chunky buttons, and a persistent leaderboard tied to your username. Create a unique username and your stats stick—every return is a climb, not a reset.</p>
+
+    <div class="section-title">Features</div>
+    <ul>
+      <li>Unique username: create it once; your stats persist under that name.</li>
+      <li>Leaderboard: shared board for everyone; best streaks and matches tied to your name.</li>
+      <li>Soundtrack: retro/war-style audio for the arcade mood.</li>
+      <li>Chunky buttons: big, bold controls for visual punch.</li>
+      <li>Website: a static page to navigate the module and setup.</li>
+    </ul>
+
+    <div class="section-title">Leaderboard</div>
+    <ul>
+      <li>Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically. Usernames must be unique; stats persist across sessions.</li>
+      <li>Want your own board? Override in <code>.env</code>:
+        <pre>BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev</pre>
+        The client calls the Worker; the Worker upserts to Supabase. If you switch the Worker to an anon key, keep RLS enabled and add SELECT/INSERT/UPDATE policies with sanity checks (length/name, non-negative stats) so public writes stay constrained. Prefer a private leaderboard? Swap in your own Worker/Supabase—no client code changes needed.
+      </li>
+    </ul>
+
+    <div class="section-title">How it works (under the hood)</div>
+    <ul>
+      <li>Game: Pygame front end for arcade visuals and sound; optional terminal mode for barebones duels.</li>
+      <li>Backend: the client hits <code>BACKEND_API_BASE</code> (Cloudflare Worker). The Worker upserts to Supabase with <code>on_conflict=name</code> so existing users update.</li>
+      <li>Data: Supabase stores wins, losses, best streak; generated columns (<code>win_pct</code>, <code>total_matches</code>) are computed in the DB. Keep <code>name</code> UNIQUE and lowercased; RLS stays enabled if you use an anon key.</li>
+    </ul>
+
+    <div class="section-title">Use it</div>
+    <ul>
+      <li>Install deps: <code>python -m pip install -r requirements.txt</code></li>
+      <li>Optional override: set <code>BACKEND_API_BASE</code> in <code>.env</code> to your own Worker.</li>
+      <li>Pygame UI (easy): <code>python rps_pygame.py</code> (shim loads the main <code>src/rps/pygame_app.py</code>)</li>
+      <li>Module-style: set <code>PYTHONPATH=src</code>, then <code>python -m rps.pygame_app</code></li>
+      <li>Terminal duel: set <code>PYTHONPATH=src</code>, then <code>python -m rps.cli</code></li>
+    </ul>
 
     <div class="section-title">Project layout</div>
     <ul>
@@ -185,15 +219,6 @@ python -m rps.cli</pre>
       <li><code>assets/audio/</code> - music and sound effects</li>
       <li><code>data/scores.json</code> - local score cache (git-ignored)</li>
       <li><code>tests/test_logic.py</code> - quick logic checks</li>
-    </ul>
-
-    <div class="section-title">Leaderboard</div>
-    <ul>
-      <li>Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically.</li>
-      <li>Want your own board? Override in <code>.env</code>:
-        <pre>BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev</pre>
-        The client calls the Worker; the Worker upserts to Supabase with your key server-side. If you switch the Worker to an anon key, keep RLS enabled and add SELECT/INSERT/UPDATE policies with sanity checks. Prefer a private leaderboard? Swap in your own Worker/Supabase—no client code changes needed.
-      </li>
     </ul>
   </div>
 </body>
