@@ -1,26 +1,37 @@
 # Rock Paper Scissors Royal Rumble
 
 ## About
-Retro deja vu in neon: chiptune soundtrack, chunky buttons, and a leaderboard that keeps your legacy. Your username anchors your stats, so every time you return you pick up exactly where you left off—no throwaway runs, just a climb to the top.
+Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, chunky buttons, and a leaderboard that keeps your legacy. Create a unique username and your stats stick—every return is a climb, not a reset.
+
+## Features
+- Unique username: create it once; your stats persist under that name.
+- Leaderboard: shared board for everyone; best streaks and matches tied to your name.
+- Soundtrack: retro/war-style audio for the arcade mood.
+- Chunky buttons: big, bold controls for visual punch.
+- Website: a static page to navigate the module and setup.
 
 ## Leaderboard
-- Join a shared board with everyone who plays. Pick a unique username; your matches and streaks persist under that name.
-- Scores travel through your backend proxy (Cloudflare Worker) to Supabase. Players never see your keys—only their ranks.
+- Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically. Usernames must be unique; stats persist across sessions.
+- To run your own board or harden access, point to your Worker in `.env`:
+  ```
+  BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
+  ```
+  The client calls the Worker; the Worker upserts to Supabase. If you switch the Worker to an anon key, enable RLS and add SELECT/INSERT/UPDATE policies with sanity checks (length/name, non-negative stats) so public writes stay constrained.
 
 ## How it works (under the hood)
 - Game: Pygame front end for arcade visuals and sound; optional terminal mode for barebones duels.
-- Backend: the client hits `BACKEND_API_BASE` (your Cloudflare Worker). The Worker upserts to Supabase using your service-role key with `on_conflict=name`.
-- Data: Supabase stores wins, losses, best streak; generated columns (win_pct, total_matches) are computed in the DB.
+- Backend: the client hits `BACKEND_API_BASE` (Cloudflare Worker). The Worker upserts to Supabase with `on_conflict=name` so existing users update.
+- Data: Supabase stores wins, losses, best streak; generated columns (`win_pct`, `total_matches`) are computed in the DB. Keep `name` UNIQUE and lowercased; RLS stays enabled if you use an anon key.
 
 ## Use it
 1) Install deps:
 ```powershell
 python -m pip install -r requirements.txt
 ```
-2) Set the backend (optional cloud scores) in `.env`:
-```
-BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
-```
+2) Optional: override the default backend in `.env`:
+   ```
+   BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
+   ```
 3) Run (from repo root):
 - Pygame UI:
   ```powershell

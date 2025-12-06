@@ -167,7 +167,7 @@ python -m rps.cli</pre>
     </ul>
 
     <div class="section-title">About</div>
-    <p>Retro deja vu in neon: chiptune soundtrack, chunky buttons, and a persistent leaderboard tied to your username. Come back anytime and your stats are still there.</p>
+    <p>Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, chunky buttons, and a leaderboard that keeps your legacy. Create a unique username and your stats stick—every return is a climb, not a reset.</p>
 
     <div class="section-title">Project layout</div>
     <ul>
@@ -183,10 +183,10 @@ python -m rps.cli</pre>
 
     <div class="section-title">Leaderboard</div>
     <ul>
-      <li>Default: scores stay local.</li>
-      <li>Join everyone on the shared board by pointing the game at your Cloudflare Worker proxy:
+      <li>Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically.</li>
+      <li>Want your own board? Override in <code>.env</code>:
         <pre>BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev</pre>
-        The client calls your Worker; the Worker upserts to Supabase with your service-role key. Generated columns (win_pct, total_matches) are computed in the DB. Your username keeps your stats across sessions.
+        The client calls the Worker; the Worker upserts to Supabase with your key server-side. If you switch the Worker to an anon key, keep RLS enabled and add SELECT/INSERT/UPDATE policies with sanity checks.
       </li>
     </ul>
   </div>

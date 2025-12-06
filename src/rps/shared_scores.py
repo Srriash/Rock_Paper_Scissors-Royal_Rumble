@@ -25,7 +25,11 @@ def _load_dotenv():
 _load_dotenv()
 
 # Public-facing backend API that proxies to Supabase securely (no keys in client)
-BACKEND_API_BASE = os.getenv("BACKEND_API_BASE", "").rstrip("/")
+# Default to the shared Worker so users don't need to set anything.
+BACKEND_API_BASE = os.getenv(
+    "BACKEND_API_BASE",
+    "https://floral-frog-3f5f.sriashwinsridharan.workers.dev",
+).rstrip("/")
 
 
 def _has_backend():
