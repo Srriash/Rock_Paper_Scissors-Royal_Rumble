@@ -3,6 +3,9 @@
 ## About
 Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, chunky buttons, and a leaderboard that keeps your legacy. Create a unique username and your stats stick—every return is a climb, not a reset.
 
+Play the static landing page version here (if GitHub Pages is enabled):  
+[Open the web page](https://srriash.github.io/Rock_Paper_Scissors-Royal_Rumble/)
+
 ## Features
 - Unique username: create it once; your stats persist under that name.
 - Leaderboard: shared board for everyone; best streaks and matches tied to your name.
