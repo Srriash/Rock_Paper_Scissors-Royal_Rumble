@@ -17,6 +17,7 @@ Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, 
   BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
   ```
   The client calls the Worker; the Worker upserts to Supabase. If you switch the Worker to an anon key, enable RLS and add SELECT/INSERT/UPDATE policies with sanity checks (length/name, non-negative stats) so public writes stay constrained.
+- Prefer a private leaderboard? Swap in your own Worker/Supabase via the same `BACKEND_API_BASE` override; the client code stays the same.
 
 ## How it works (under the hood)
 - Game: Pygame front end for arcade visuals and sound; optional terminal mode for barebones duels.
