@@ -1,54 +1,52 @@
 # Rock Paper Scissors Royal Rumble
 
-> Neon-lit arcade vibes, chiptune beats, and a smackdown of ROCK / PAPER / SCISSORS.
+Neon arcade vibes, chiptune beats, and a smackdown of ROCK / PAPER / SCISSORS in Python.
 
-## ✨ Why play this?
-- 🕹️ Pygame retro UI with music + SFX, tuned for quick duels.
-- ⌨️ Terminal mode for minimalists.
-- 🌐 Optional online leaderboard (your Supabase, anon key only).
-- ✅ Tested logic, tidy `src/` layout, and ready-to-run assets.
+## Why play this?
+- Pygame retro UI with music and SFX; terminal mode for quick duels.
+- Optional online leaderboard via your Cloudflare Worker proxy to Supabase (no keys in the client).
+- Tested logic, tidy `src/` layout, ready-to-run assets.
 
-## 🚀 Quickstart
+## Quickstart
 1) Install:
 ```powershell
 python -m pip install -r requirements.txt
 ```
 2) Launch (from repo root):
-- Pygame UI
+- Pygame UI:
   ```powershell
   set PYTHONPATH=src
   python -m rps.pygame_app
   ```
-- Terminal duel
+- Terminal duel:
   ```powershell
   set PYTHONPATH=src
   python -m rps.cli
   ```
 - Compatibility: `python rps_pygame.py` also launches the Pygame UI.
 
-## 🎮 Pygame controls
+## Pygame controls
 - Click ROCK, PAPER, or SCISSORS to throw.
-- 'ESC' quits. Music toggles in-game. Audio loads from 'assets/audio/'.
+- `ESC` quits. Music toggles in-game. Audio loads from `assets/audio/`.
 
-## 🧭 Project layout
+## Project layout
 - `src/rps/logic.py` – rules and computer move picker
 - `src/rps/cli.py` – terminal loop
 - `src/rps/pygame_app.py` – main Pygame experience (music, SFX, leaderboard hooks)
-- `src/rps/gui_widgets.py` – small Pygame demo UI
-- `src/rps/shared_scores.py` – optional Supabase client
+- `src/rps/shared_scores.py` – backend proxy client (calls your Worker)
 - `assets/audio/` – music and sound effects
 - `data/scores.json` – local score cache (git-ignored)
 - `tests/test_logic.py` – quick logic checks
 
-## 🌐 Leaderboard (optional)
-- Default: scores stay local; cloud sync is off.
-- If you have a secure backend API that proxies to Supabase (so no keys ship to players), add its base URL to `.env`:
+## Leaderboard (backend proxy)
+- Default: scores stay local unless `BACKEND_API_BASE` is set.
+- To use a secure backend (Cloudflare Worker that talks to Supabase with your service-role key), set in `.env`:
   ```
-  BACKEND_API_BASE=https://your-backend.example.com
+  BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev
   ```
-  The client sends scores to that API; the API talks to Supabase with your keys server-side. Players never see your keys.
+  The client only calls your Worker; Supabase keys stay server-side. Server-side table can have generated columns like `win_pct` and `total_matches`; the client only sends name, matches_won, matches_lost, best_streak.
 
-## ✅ Tests
+## Tests
 ```powershell
 python -m pytest
 ```

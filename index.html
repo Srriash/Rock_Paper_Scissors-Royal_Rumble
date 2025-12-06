@@ -178,12 +178,12 @@ python -m rps.cli</pre>
       <li><code>tests/test_logic.py</code> – quick logic checks</li>
     </ul>
 
-    <div class="section-title">Leaderboard (optional)</div>
+    <div class="section-title">Leaderboard (backend proxy)</div>
     <ul>
       <li>Default: scores stay local; cloud sync is off.</li>
-      <li>To share scores without exposing keys, point the game at your secure backend API:
-        <pre>BACKEND_API_BASE=https://your-backend.example.com</pre>
-        The client talks to your backend; your backend talks to Supabase with your credentials. Players never see your keys.
+      <li>To share scores without exposing keys, point the game at your Cloudflare Worker proxy:
+        <pre>BACKEND_API_BASE=https://your-worker.yourdomain.workers.dev</pre>
+        The client calls your Worker; the Worker upserts to Supabase with your service-role key. Generated columns (win_pct, total_matches) are computed in the DB.
       </li>
     </ul>
 
