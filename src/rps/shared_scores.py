@@ -32,6 +32,10 @@ def _has_backend():
     return bool(BACKEND_API_BASE)
 
 
+def _normalize_name(name: str) -> str:
+    return (name or "").strip().lower()
+
+
 def fetch_leaderboard(limit=10):
     """Fetch top streaks from a secure backend. Returns list of dicts or empty list on failure."""
     if not _has_backend():
@@ -46,23 +50,31 @@ def fetch_leaderboard(limit=10):
 
 
 def fetch_player(name):
-    """Fetch a single player record by name from backend."""
+    """Fetch a single player record by name from backend. Returns a dict or None."""
     if not _has_backend() or not name:
         return None
+    name = _normalize_name(name)
     url = f"{BACKEND_API_BASE}/player"
     try:
         resp = requests.get(url, params={"name": name}, timeout=5)
-        resp.raise_for_status()
+        if resp.status_code >= 400:
+            return None
         data = resp.json()
+        if isinstance(data, list):
+            return data[0] if data else None
         return data or None
     except Exception:
         return None
 
 
-def upsert_score(name, matches_won, matches_lost, best_streak, win_pct=None):
-    """Upsert a player's record via backend. Returns True on success, False otherwise."""
+def upsert_score(name, matches_won, matches_lost, best_streak):
+    """Upsert a player's record via backend. Returns the saved record or None.
+
+    Note: win_pct/total_matches are computed in the DB, so we do not send them.
+    """
     if not _has_backend():
-        return False
+        return None
+    name = _normalize_name(name)
     url = f"{BACKEND_API_BASE}/score"
     payload = {
         "name": name,
@@ -70,11 +82,14 @@ def upsert_score(name, matches_won, matches_lost, best_streak, win_pct=None):
         "matches_lost": matches_lost,
         "best_streak": best_streak,
     }
-    if win_pct is not None:
-        payload["win_pct"] = win_pct
     try:
         resp = requests.post(url, json=payload, timeout=5)
-        resp.raise_for_status()
-        return True
+        if resp.status_code >= 400:
+            return None
+        # try to parse json; if not available, treat as success with no body
+        data = resp.json()
+        if isinstance(data, list):
+            return data[0] if data else None
+        return data or None
     except Exception:
-        return False
+        return None

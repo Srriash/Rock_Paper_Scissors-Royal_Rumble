@@ -292,8 +292,36 @@ def main():
         nonlocal remote_leaderboard
         remote_leaderboard = fetch_leaderboard(10)
 
+    def push_scores():
+        """Persist current scores to backend and refresh local/leaderboard."""
+        nonlocal matches_won, matches_lost, best_streak
+        total_played = matches_won + matches_lost
+        # win_pct computed in DB; only send fields that are writable
+        saved = upsert_score(player_name or 'PLAYER', matches_won, matches_lost, best_streak)
+        if saved:
+            matches_won = int(saved.get('matches_won', matches_won))
+            matches_lost = int(saved.get('matches_lost', matches_lost))
+            best_streak = int(saved.get('best_streak', best_streak))
+            refresh_remote_leaderboard()
+            refresh_player_record()
+
+    def refresh_player_record():
+        """Reload player stats from backend so UI stays in sync."""
+        nonlocal best_streak, matches_won, matches_lost, win_streak
+        if not player_name:
+            return
+        rec = fetch_player(player_name)
+        if isinstance(rec, list):  # backend may return a list
+            rec = rec[0] if rec else None
+        if rec:
+            best_streak = int(rec.get('best_streak', best_streak))
+            matches_won = int(rec.get('matches_won', matches_won))
+            matches_lost = int(rec.get('matches_lost', matches_lost))
+            # keep current streak locally; best_streak is persisted
+
     running = True
     refresh_remote_leaderboard()
+    refresh_player_record()
     while running:
         dt = clock.tick(60) / 1000.0
         panel_w_pre = min(760, WIDTH - 100)
@@ -340,6 +368,8 @@ def main():
                 elif state == 'confirm_identity':
                     if confirm_rect.collidepoint(pos):
                         rec = fetch_player(confirm_user_name)
+                        if isinstance(rec, list):  # backend may return a list
+                            rec = rec[0] if rec else None
                         player_score = 0
                         computer_score = 0
                         current_ties = 0
@@ -398,6 +428,8 @@ def main():
                             show_move = None
                             round_result = ''
                             persist_scores()
+                        else:
+                            push_scores()
                         stop_music()
                         running = False
                     elif cancel_rect.collidepoint(pos):
@@ -543,10 +575,7 @@ def main():
                     current_ties = 0
                     current_games = 0
                     show_move = None
-                    total_played = matches_won + matches_lost
-                    win_pct = (matches_won / total_played * 100.0) if total_played else 0.0
-                    upsert_score(player_name or 'PLAYER', matches_won, matches_lost, best_streak, win_pct=win_pct)
-                    refresh_remote_leaderboard()
+                    push_scores()
                     state = 'post_match_choice'
                 persist_scores()
 
