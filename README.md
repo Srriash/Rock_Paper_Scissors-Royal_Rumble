@@ -12,26 +12,44 @@ Retro-style Rock/Paper/Scissors with neon déjà vu vibes: chiptune soundtrack, 
 
 ## How it works (under the hood)
 - Game: Pygame front end for arcade visuals and sound; optional terminal mode for barebones duels.
-- Backend: the client hits `BACKEND_API_BASE` (Cloudflare Worker). The Worker upserts to Supabase with `on_conflict=name` so existing users update.
+- Backend: the user hits `BACKEND_API_BASE` (Cloudflare Worker). The Worker upserts to Supabase with `on_conflict=name` so existing users update.
 - Data: Supabase stores wins, losses, best streak; generated columns (`win_pct`, `total_matches`) are computed in the DB. Keep `name` UNIQUE and lowercased; RLS stays enabled if you use an anon key.
 - Shared by default: the game points at the bundled Cloudflare Worker so players land on the shared board automatically.
   
 ## Use it
 1) Install deps:
-```powershell
-python -m pip install -r requirements.txt
-```
-2) Run (from repo root):
+   ```
+   python -m pip install -r requirements.txt
+   ```
+   or
+   ```
+   python -m pip install requests
+   python -m pip install pygame
+   ```
+
+3) Run (from repo root):
 - Pygame UI:
-  ```powershell
-  set PYTHONPATH=src
-  python -m rps.pygame_app
-  ```
+```
+# macOS / Linux
+export PYTHONPATH=src
+
+# Windows (CMD or PowerShell)
+set PYTHONPATH=src
+
+python -m rps.pygame_app
+```
+
 - Terminal duel:
-  ```powershell
-  set PYTHONPATH=src
-  python -m rps.cli
-  ```
+ ```
+ # macOS / Linux
+export PYTHONPATH=src
+
+# Windows
+set PYTHONPATH=src
+
+python -m rps.cli
+```
+
 - Compatibility: `python rps_pygame.py` also launches the Pygame UI.
 
 Controls (Pygame): Click ROCK/PAPER/SCISSORS. `ESC` quits. Music toggles in-game. Audio lives in `assets/audio/`.
