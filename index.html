@@ -181,10 +181,9 @@ python -m rps.cli</pre>
     <div class="section-title">Leaderboard (optional)</div>
     <ul>
       <li>Default: scores stay local; cloud sync is off.</li>
-      <li>To share scores, set up your own Supabase and add to <code>.env</code>:
-        <pre>SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key</pre>
-        Use a public/anon key with strict RLS. Do not share a service-role key. Update <code>src/rps/shared_scores.py</code> to read the anon key if you enable this.
+      <li>To share scores without exposing keys, point the game at your secure backend API:
+        <pre>BACKEND_API_BASE=https://your-backend.example.com</pre>
+        The client talks to your backend; your backend talks to Supabase with your credentials. Players never see your keys.
       </li>
     </ul>
 

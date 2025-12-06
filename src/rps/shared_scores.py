@@ -24,27 +24,21 @@ def _load_dotenv():
 
 _load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE", "")
-TABLE = "scores"
+# Public-facing backend API that proxies to Supabase securely (no keys in client)
+BACKEND_API_BASE = os.getenv("BACKEND_API_BASE", "").rstrip("/")
 
 
-def _headers():
-    return {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-    }
+def _has_backend():
+    return bool(BACKEND_API_BASE)
 
 
 def fetch_leaderboard(limit=10):
-    """Fetch top streaks from Supabase. Returns list of dicts or empty list on failure."""
-    if not SUPABASE_URL or not SUPABASE_KEY:
+    """Fetch top streaks from a secure backend. Returns list of dicts or empty list on failure."""
+    if not _has_backend():
         return []
-    url = f"{SUPABASE_URL}/rest/v1/{TABLE}?select=*&order=best_streak.desc&limit={limit}"
+    url = f"{BACKEND_API_BASE}/leaderboard"
     try:
-        resp = requests.get(url, headers=_headers(), timeout=5)
+        resp = requests.get(url, params={"limit": limit}, timeout=5)
         resp.raise_for_status()
         return resp.json()
     except Exception:
@@ -52,24 +46,24 @@ def fetch_leaderboard(limit=10):
 
 
 def fetch_player(name):
-    """Fetch a single player record by name."""
-    if not SUPABASE_URL or not SUPABASE_KEY or not name:
+    """Fetch a single player record by name from backend."""
+    if not _has_backend() or not name:
         return None
-    url = f"{SUPABASE_URL}/rest/v1/{TABLE}?name=eq.{name}&select=*"
+    url = f"{BACKEND_API_BASE}/player"
     try:
-        resp = requests.get(url, headers=_headers(), timeout=5)
+        resp = requests.get(url, params={"name": name}, timeout=5)
         resp.raise_for_status()
         data = resp.json()
-        return data[0] if data else None
+        return data or None
     except Exception:
         return None
 
 
 def upsert_score(name, matches_won, matches_lost, best_streak, win_pct=None):
-    """Upsert a player's record. Returns True on success, False otherwise."""
-    if not SUPABASE_URL or not SUPABASE_KEY:
+    """Upsert a player's record via backend. Returns True on success, False otherwise."""
+    if not _has_backend():
         return False
-    url = f"{SUPABASE_URL}/rest/v1/{TABLE}"
+    url = f"{BACKEND_API_BASE}/score"
     payload = {
         "name": name,
         "matches_won": matches_won,
@@ -79,13 +73,7 @@ def upsert_score(name, matches_won, matches_lost, best_streak, win_pct=None):
     if win_pct is not None:
         payload["win_pct"] = win_pct
     try:
-        resp = requests.post(
-            url,
-            headers=_headers(),
-            json=payload,
-            timeout=5,
-            params={"on_conflict": "name"},
-        )
+        resp = requests.post(url, json=payload, timeout=5)
         resp.raise_for_status()
         return True
     except Exception:

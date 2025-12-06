@@ -42,12 +42,11 @@ python -m pip install -r requirements.txt
 
 ## 🌐 Leaderboard (optional)
 - Default: scores stay local; cloud sync is off.
-- If you want shared scores, set up your own Supabase project and add to `.env`:
+- If you have a secure backend API that proxies to Supabase (so no keys ship to players), add its base URL to `.env`:
   ```
-  SUPABASE_URL=https://your-project.supabase.co
-  SUPABASE_ANON_KEY=your-anon-key
+  BACKEND_API_BASE=https://your-backend.example.com
   ```
-  Use only a public/anon key with strict RLS. Do not share a service-role key. Update `src/rps/shared_scores.py` to read the anon key if you enable this.
+  The client sends scores to that API; the API talks to Supabase with your keys server-side. Players never see your keys.
 
 ## ✅ Tests
 ```powershell
