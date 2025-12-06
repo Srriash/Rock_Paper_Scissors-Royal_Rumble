@@ -35,6 +35,13 @@ Otherwise, run the same commands without it.
 
 3) Run (from repo root):
 - Pygame UI:
+`python rps_pygame.py` launches the Pygame UI
+```
+python -m python rps_pygame.py
+```
+or
+You can directly from the main file stored in src
+
 ```
 # macOS / Linux
 export PYTHONPATH=src
@@ -55,8 +62,6 @@ set PYTHONPATH=src
 
 python -m rps.cli
 ```
-
-- Compatibility: `python rps_pygame.py` also launches the Pygame UI.
 
 Controls (Pygame): Click ROCK/PAPER/SCISSORS. `ESC` quits. Music toggles in-game. Audio lives in `assets/audio/`.
 
